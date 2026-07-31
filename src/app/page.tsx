@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { db, auth } from '../lib/firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
@@ -11,7 +11,7 @@ import {
 import { 
   LayoutDashboard, Inbox, Calendar, FolderGit2, Compass, LogOut, Copy, Check, 
   MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
-  Eye, EyeOff, Menu, X
+  Eye, EyeOff, Menu, X, ListTodo, Square
 } from 'lucide-react';
 
 import KPICards from '../components/KPICards';
@@ -19,6 +19,7 @@ import InboxModule from '../components/InboxModule';
 import AgendaModule from '../components/AgendaModule';
 import ProjectsModule from '../components/ProjectsModule';
 import FreeTimeModule from '../components/FreeTimeModule';
+import DailyTasksModule from '../components/DailyTasksModule';
 
 function DashboardContent() {
   const { user, userData, signOut } = useAuth();
@@ -30,6 +31,7 @@ function DashboardContent() {
   const [events, setEvents] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
+  const [dailyTasks, setDailyTasks] = useState<any[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   
   const [copied, setCopied] = useState(false);
@@ -72,9 +74,25 @@ function DashboardContent() {
     const unsubscribePlans = onSnapshot(qPlans, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ planId: doc.id, ...doc.data() }));
       setPlans(items);
+    }, (err) => console.error("Error plans snapshot:", err));
+
+    // 5. Daily Tasks subscription
+    const qDailyTasks = query(collection(db, 'daily_tasks'), where('userId', '==', user.uid));
+    const unsubscribeDailyTasks = onSnapshot(qDailyTasks, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ taskId: doc.id, ...doc.data() }));
+      // Sort: incomplete first, newest first
+      items.sort((a: any, b: any) => {
+        if (a.completed !== b.completed) {
+          return a.completed ? 1 : -1;
+        }
+        const tA = a.createdAt?.seconds || 0;
+        const tB = b.createdAt?.seconds || 0;
+        return tB - tA;
+      });
+      setDailyTasks(items);
       setLoadingData(false);
     }, (err) => {
-      console.error("Error plans snapshot:", err);
+      console.error("Error daily tasks snapshot:", err);
       setLoadingData(false);
     });
 
@@ -83,6 +101,7 @@ function DashboardContent() {
       unsubscribeEvents();
       unsubscribeProjects();
       unsubscribePlans();
+      unsubscribeDailyTasks();
     };
   }, [user]);
 
@@ -190,6 +209,7 @@ function DashboardContent() {
               { id: 'agenda', label: '2. Agenda / Eventos', icon: Calendar },
               { id: 'proyectos', label: '3. Proyectos & Metas', icon: FolderGit2 },
               { id: 'tiempo_libre', label: '4. Tiempo Libre', icon: Compass },
+              { id: 'tareas_diarias', label: '5. Tareas Diarias', icon: ListTodo },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -260,6 +280,7 @@ function DashboardContent() {
               {activeTab === 'agenda' && 'Módulo 2: Agenda & Notificaciones'}
               {activeTab === 'proyectos' && 'Módulo 3: Proyectos & Metas'}
               {activeTab === 'tiempo_libre' && 'Módulo 4: Tiempo Libre & Familia'}
+              {activeTab === 'tareas_diarias' && 'Módulo 5: Tareas Diarias / Acciones'}
             </h1>
             <p className="text-xs text-gray-400 mt-1">
               {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -352,8 +373,36 @@ function DashboardContent() {
                 )}
               </div>
 
-              {/* Right: Link helper instruction */}
-              <div className="lg:col-span-1">
+              {/* Right: Link helper instruction & Daily tasks preview */}
+              <div className="lg:col-span-1 space-y-8">
+                
+                {/* Tareas Diarias Quick Card */}
+                <div className="glass p-6 rounded-2xl border border-white/10 space-y-4 bg-gradient-to-b from-violet-500/5 to-transparent">
+                  <h3 className="text-md font-semibold text-white flex items-center gap-2">
+                    <ListTodo className="w-4.5 h-4.5 text-violet-400" />
+                    Tareas del Día
+                  </h3>
+                  {dailyTasks.filter(t => !t.completed).length === 0 ? (
+                    <p className="text-xs text-gray-400">¡Súper! No tienes tareas pendientes para hoy.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                      {dailyTasks.filter(t => !t.completed).map(task => (
+                        <button
+                          key={task.taskId}
+                          onClick={async () => {
+                            const docRef = doc(db, 'daily_tasks', task.taskId);
+                            await updateDoc(docRef, { completed: true });
+                          }}
+                          className="w-full flex items-center gap-2.5 bg-slate-900/40 hover:bg-slate-900/60 border border-white/5 p-3 rounded-xl text-left text-xs text-gray-300 hover:text-white transition cursor-pointer"
+                        >
+                          <Square className="w-4 h-4 text-violet-400 shrink-0" />
+                          <span className="truncate">{task.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="glass p-6 rounded-2xl border border-white/10 space-y-5 bg-gradient-to-b from-indigo-500/5 to-transparent">
                   <h3 className="text-md font-semibold text-white flex items-center gap-2">
                     <Shield className="w-5 h-5 text-indigo-400" />
@@ -402,6 +451,7 @@ function DashboardContent() {
         {activeTab === 'agenda' && <AgendaModule events={events} userId={user?.uid || ''} />}
         {activeTab === 'proyectos' && <ProjectsModule projects={projects} userId={user?.uid || ''} />}
         {activeTab === 'tiempo_libre' && <FreeTimeModule plans={plans} userId={user?.uid || ''} />}
+        {activeTab === 'tareas_diarias' && <DailyTasksModule tasks={dailyTasks} userId={user?.uid || ''} />}
       </main>
 
     </div>
