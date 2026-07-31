@@ -11,7 +11,7 @@ import {
 import { 
   LayoutDashboard, Inbox, Calendar, FolderGit2, Compass, LogOut, Copy, Check, 
   MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
-  Eye, EyeOff
+  Eye, EyeOff, Menu, X
 } from 'lucide-react';
 
 import KPICards from '../components/KPICards';
@@ -23,6 +23,7 @@ import FreeTimeModule from '../components/FreeTimeModule';
 function DashboardContent() {
   const { user, userData, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'inbox' | 'agenda' | 'proyectos' | 'tiempo_libre'>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Real-time collections states
   const [logs, setLogs] = useState<any[]>([]);
@@ -129,20 +130,56 @@ function DashboardContent() {
   const todayEvents = events.filter(e => e.date === todayStr && e.status === 'pendiente');
 
   return (
-    <div className="min-h-screen flex bg-[#030712]">
+    <div className="min-h-screen flex flex-col md:flex-row bg-[#030712] relative overflow-x-hidden">
       
-      {/* Sidebar - Premium Design */}
-      <aside className="w-64 glass border-r border-white/5 flex flex-col justify-between shrink-0">
+      {/* Mobile Top Navigation Header */}
+      <header className="md:hidden flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#030712]/80 backdrop-blur sticky top-0 z-40">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+            <Sparkles className="w-4.5 h-4.5 text-white" />
+          </div>
+          <span className="font-bold text-white text-sm tracking-tight">Bitácora AI</span>
+        </div>
+        
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="text-gray-400 hover:text-white p-1 hover:bg-white/5 rounded-lg transition cursor-pointer"
+        >
+          <Menu className="w-6 h-6" />
+        </button>
+      </header>
+
+      {/* Backdrop overlay for mobile drawer */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-45"
+        />
+      )}
+
+      {/* Sidebar - Premium Responsive Drawer */}
+      <aside className={`fixed md:relative inset-y-0 left-0 w-64 glass border-r border-white/5 flex flex-col justify-between shrink-0 z-50 transform ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0 transition-transform duration-300 ease-in-out h-full`}>
         <div className="p-6 space-y-8">
-          {/* Brand/Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
-              <Sparkles className="w-5 h-5 text-white" />
+          {/* Brand/Logo & Close Button for mobile */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-white leading-none tracking-tight">Bitácora AI</h2>
+                <span className="text-[10px] text-gray-500 font-semibold tracking-widest uppercase">Asistente</span>
+              </div>
             </div>
-            <div>
-              <h2 className="font-bold text-white leading-none tracking-tight">Bitácora AI</h2>
-              <span className="text-[10px] text-gray-500 font-semibold tracking-widest uppercase">Asistente</span>
-            </div>
+            
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden text-gray-400 hover:text-white p-1 hover:bg-white/5 rounded-lg transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Navigation Menu */}
@@ -159,7 +196,10 @@ function DashboardContent() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => {
+                    setActiveTab(tab.id as any);
+                    setIsSidebarOpen(false);
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition cursor-pointer ${
                     isActive 
                       ? 'bg-violet-600/15 border border-violet-500/30 text-violet-300 shadow-md shadow-violet-500/5' 
@@ -210,11 +250,11 @@ function DashboardContent() {
       </aside>
 
       {/* Main Panel */}
-      <main className="flex-1 p-8 overflow-y-auto max-h-screen">
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto max-h-screen">
         {/* Header */}
-        <header className="flex justify-between items-center mb-8">
+        <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">
               {activeTab === 'dashboard' && 'Dashboard Principal'}
               {activeTab === 'inbox' && 'Módulo 1: Inbox / Bitácora Diaria'}
               {activeTab === 'agenda' && 'Módulo 2: Agenda & Notificaciones'}

@@ -182,9 +182,9 @@ export default function InboxModule({ logs, userId }: InboxModuleProps) {
                   {/* Absolute Action button: Delete */}
                   <button 
                     onClick={() => handleDelete(log.logId)}
-                    className="absolute top-5 right-5 text-gray-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
+                    className="absolute top-4 right-4 text-gray-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 cursor-pointer"
                   >
-                    <Trash2 className="w-4.5 h-4.5" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               );
