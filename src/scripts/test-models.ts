@@ -10,7 +10,7 @@ const ai = new GoogleGenAI({
 async function listModels() {
   try {
     console.log('Consultando modelos disponibles en tu API Key de Gemini...');
-    const response = await ai.models.list();
+    const response = (await ai.models.list()) as any;
     console.log('✅ Modelos encontrados:');
     
     // Check if response contains models
