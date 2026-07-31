@@ -1,0 +1,22 @@
+{
+  "name": "Bitácora Inteligente AI",
+  "short_name": "BitácoraAI",
+  "description": "Asistente personal inteligente y Bitácora con IA integrada",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#030712",
+  "theme_color": "#8b5cf6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

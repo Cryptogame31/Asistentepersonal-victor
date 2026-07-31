@@ -19,6 +19,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${outfit.className} dark`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#8b5cf6" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Bitácora AI" />
+        <link rel="apple-touch-icon" href="/icon.png" />
+      </head>
       <body className="antialiased text-gray-100 bg-[#030712] min-h-screen">
         {children}
       </body>
