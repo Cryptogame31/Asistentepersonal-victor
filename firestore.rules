@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Reglas para la colección 'users': cada usuario puede leer/escribir solo su propio documento
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Permite al Bot de Telegram (si usa Admin SDK no le aplican estas reglas, pero si usa Client SDK)
+      // consultar y actualizar perfiles vinculados.
+    }
+    
+    // Reglas para 'inbox_logs': lectura y escritura protegidas por userId
+    match /inbox_logs/{logId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Reglas para 'events_reminders'
+    match /events_reminders/{eventId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Reglas para 'projects_goals'
+    match /projects_goals/{projectId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Reglas para 'free_time_plans'
+    match /free_time_plans/{planId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+  }
+}
