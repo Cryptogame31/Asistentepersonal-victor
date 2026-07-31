@@ -23,7 +23,7 @@ import DailyTasksModule from '../components/DailyTasksModule';
 
 function DashboardContent() {
   const { user, userData, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inbox' | 'agenda' | 'proyectos' | 'tiempo_libre'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inbox' | 'agenda' | 'proyectos' | 'tiempo_libre' | 'tareas_diarias'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Real-time collections states
