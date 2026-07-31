@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts';
 import { 
   LayoutDashboard, Inbox, Calendar, FolderGit2, Compass, LogOut, Copy, Check, 
-  MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle
+  MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
+  Eye, EyeOff
 } from 'lucide-react';
 
 import KPICards from '../components/KPICards';
@@ -375,6 +377,36 @@ function AuthScreen() {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleForgotPassword = async () => {
+    setErrorMsg('');
+    setSuccessMsg('');
+    if (!email) {
+      setErrorMsg('Por favor, introduce tu correo electrónico en el campo superior primero.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setSuccessMsg('Se ha enviado un correo para restablecer tu contraseña. Revisa tu bandeja de entrada.');
+    } catch (err: any) {
+      console.error(err);
+      let msg = 'Error al enviar el correo de recuperación.';
+      if (err.code === 'auth/user-not-found') {
+        msg = 'No existe ningún usuario registrado con este correo.';
+      } else if (err.code === 'auth/invalid-email') {
+        msg = 'El formato del correo electrónico no es válido.';
+      } else if (err.message) {
+        msg = err.message;
+      }
+      setErrorMsg(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,6 +459,12 @@ function AuthScreen() {
           </div>
         )}
 
+        {successMsg && (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3.5 rounded-xl text-xs font-semibold text-center">
+            {successMsg}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
             <div>
@@ -458,16 +496,37 @@ function AuthScreen() {
 
           <div>
             <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">Contraseña</label>
-            <input
-              type="password"
-              className="w-full glass-input p-3.5 rounded-xl text-sm"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                className="w-full glass-input p-3.5 pr-11 rounded-xl text-sm"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition cursor-pointer p-1"
+              >
+                {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+              </button>
+            </div>
           </div>
+
+          {!isSignUp && (
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-xs text-gray-400 hover:text-violet-300 transition cursor-pointer font-medium"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            </div>
+          )}
 
           <button
             type="submit"
