@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { Calendar, Plus, Trash2, CheckCircle2, Clock, Send, Bell, BellOff } from 'lucide-react';
+import { Calendar, Plus, Trash2, CheckCircle2, Clock, Send, Bell, BellOff, Edit2 } from 'lucide-react';
 
 interface AgendaModuleProps {
   events: any[];
@@ -17,6 +17,42 @@ export default function AgendaModule({ events, userId }: AgendaModuleProps) {
   const [category, setCategory] = useState<'cita' | 'cumpleaños' | 'compromiso' | 'compras'>('cita');
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState<'todos' | 'pendiente' | 'completado'>('pendiente');
+
+  // Edit states
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
+  const [editCategory, setEditCategory] = useState<'cita' | 'cumpleaños' | 'compromiso' | 'compras'>('cita');
+
+  const startEditing = (event: any) => {
+    setEditingEventId(event.eventId);
+    setEditTitle(event.title);
+    setEditDate(event.date);
+    setEditTime(event.time || '');
+    setEditCategory(event.category);
+  };
+
+  const handleSaveEdit = async (eventId: string) => {
+    if (!editTitle.trim() || !editDate) return;
+
+    try {
+      const eventRef = doc(db, 'events_reminders', eventId);
+      await updateDoc(eventRef, {
+        title: editTitle.trim(),
+        date: editDate,
+        time: editTime || '',
+        category: editCategory,
+        // Reset reminder flags if they changed date/time
+        reminderSent: false,
+        reminder24hSent: false,
+        reminder1hSent: false
+      });
+      setEditingEventId(null);
+    } catch (error) {
+      console.error('Error al guardar cambios de evento:', error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -203,75 +239,150 @@ export default function AgendaModule({ events, userId }: AgendaModuleProps) {
                 catColor = 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20';
               }
 
+              const isEditing = editingEventId === event.eventId;
               return (
                 <div 
                   key={event.eventId} 
-                  className={`glass p-4 rounded-xl border flex justify-between items-center transition duration-200 ${
+                  className={`glass p-4 rounded-xl border flex flex-col md:flex-row justify-between gap-4 items-start md:items-center transition duration-200 ${
                     isCompleted ? 'opacity-65 border-white/5 bg-slate-900/20' : 'border-white/10 hover:border-white/20'
                   }`}
                 >
-                  <div className="flex items-center gap-4">
-                    {/* Toggle button */}
-                    <button
-                      onClick={() => handleToggleStatus(event.eventId, event.status)}
-                      className={`transition cursor-pointer ${isCompleted ? 'text-emerald-500' : 'text-gray-500 hover:text-emerald-400'}`}
-                    >
-                      <CheckCircle2 className={`w-6 h-6 ${isCompleted ? 'fill-emerald-500/20' : ''}`} />
-                    </button>
-
-                    <div className="space-y-1">
-                      <h4 className={`text-sm font-semibold ${isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>
-                        {event.title}
-                      </h4>
-                      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          {event.date} {event.time ? `• ${event.time}` : ''}
-                        </span>
-                        <span>•</span>
-                        <span className={`px-2 py-0.5 rounded-full border text-[10px] ${catColor}`}>
-                          {catEmoji} {event.category.toUpperCase()}
-                        </span>
+                  {isEditing ? (
+                    <div className="flex-1 w-full space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Título</label>
+                          <input
+                            type="text"
+                            className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Categoría</label>
+                          <select
+                            className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                            value={editCategory}
+                            onChange={(e) => setEditCategory(e.target.value as any)}
+                          >
+                            <option value="cita">🏥 Cita Médica</option>
+                            <option value="cumpleaños">🎂 Cumpleaños</option>
+                            <option value="compromiso">🤝 Compromiso</option>
+                            <option value="compras">🛒 Compras</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Fecha</label>
+                          <input
+                            type="date"
+                            className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                            value={editDate}
+                            onChange={(e) => setEditDate(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Hora</label>
+                          <input
+                            type="time"
+                            className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                            value={editTime}
+                            onChange={(e) => setEditTime(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end gap-2 pt-1">
+                        <button
+                          onClick={() => setEditingEventId(null)}
+                          className="bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white px-3 py-1.5 rounded-lg text-xs transition cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => handleSaveEdit(event.eventId)}
+                          className="bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-lg text-xs transition cursor-pointer shadow-md"
+                        >
+                          Guardar
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-4">
+                        {/* Toggle button */}
+                        <button
+                          onClick={() => handleToggleStatus(event.eventId, event.status)}
+                          className={`transition cursor-pointer ${isCompleted ? 'text-emerald-500' : 'text-gray-500 hover:text-emerald-400'}`}
+                        >
+                          <CheckCircle2 className={`w-6 h-6 ${isCompleted ? 'fill-emerald-500/20' : ''}`} />
+                        </button>
 
-                  {/* Actions & Alerts */}
-                  <div className="flex items-center gap-3">
-                    {/* Telegram Alert Pushed Indicator */}
-                    {!isCompleted && (
-                      <div 
-                        title={
-                          event.reminder1hSent 
-                            ? "Recordatorios de 24h y 1h enviados" 
-                            : event.reminder24hSent 
-                            ? "Recordatorio de 24h enviado. Pendiente recordatorio de 1h." 
-                            : "Recordatorios programados para 24h y 1h antes de la cita."
-                        }
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] font-medium transition ${
-                          event.reminder1hSent 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                            : event.reminder24hSent
-                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                        }`}
-                      >
-                        {event.reminder1hSent ? <Bell className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-                        {event.reminder1hSent 
-                          ? 'AVISADO' 
-                          : event.reminder24hSent 
-                          ? '24H ENVIADO' 
-                          : 'PROGRAMADO'}
+                        <div className="space-y-1">
+                          <h4 className={`text-sm font-semibold ${isCompleted ? 'line-through text-gray-500' : 'text-white'}`}>
+                            {event.title}
+                          </h4>
+                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3.5 h-3.5" />
+                              {event.date} {event.time ? `• ${event.time}` : ''}
+                            </span>
+                            <span>•</span>
+                            <span className={`px-2 py-0.5 rounded-full border text-[10px] ${catColor}`}>
+                              {catEmoji} {event.category.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    )}
 
-                    <button
-                      onClick={() => handleDelete(event.eventId)}
-                      className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition cursor-pointer"
-                    >
-                      <Trash2 className="w-4.5 h-4.5" />
-                    </button>
-                  </div>
+                      {/* Actions & Alerts */}
+                      <div className="flex items-center gap-2.5">
+                        {/* Telegram Alert Pushed Indicator */}
+                        {!isCompleted && (
+                          <div 
+                            title={
+                              event.reminder1hSent 
+                                ? "Recordatorios de 24h y 1h enviados" 
+                                : event.reminder24hSent 
+                                ? "Recordatorio de 24h enviado. Pendiente recordatorio de 1h." 
+                                : "Recordatorios programados para 24h y 1h antes de la cita."
+                            }
+                            className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] font-medium transition ${
+                              event.reminder1hSent 
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                : event.reminder24hSent
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                            }`}
+                          >
+                            {event.reminder1hSent ? <Bell className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
+                            {event.reminder1hSent 
+                              ? 'AVISADO' 
+                              : event.reminder24hSent 
+                              ? '24H ENVIADO' 
+                              : 'PROGRAMADO'}
+                          </div>
+                        )}
+
+                        <button
+                          onClick={() => startEditing(event)}
+                          className="text-gray-500 hover:text-violet-400 p-2 rounded-lg hover:bg-violet-500/10 transition cursor-pointer"
+                          title="Editar compromiso"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => handleDelete(event.eventId)}
+                          className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition cursor-pointer"
+                          title="Eliminar compromiso"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })}

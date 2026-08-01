@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { db } from '../lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { Plus, Trash2, CheckSquare, Square, Calendar, PlusCircle, ArrowRight, FolderKanban } from 'lucide-react';
+import { Plus, Trash2, CheckSquare, Square, Calendar, PlusCircle, ArrowRight, FolderKanban, Edit2 } from 'lucide-react';
 
 interface ProjectsModuleProps {
   projects: any[];
@@ -21,6 +21,38 @@ export default function ProjectsModule({ projects, userId }: ProjectsModuleProps
   const [submitting, setSubmitting] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [newTasksInputs, setNewTasksInputs] = useState<{[projectId: string]: string}>({});
+
+  // Project editing states
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editTargetDate, setEditTargetDate] = useState('');
+  const [editCategory, setEditCategory] = useState<'profesional' | 'personal' | 'aprendizaje'>('profesional');
+
+  const startEditing = (project: any) => {
+    setEditingProjectId(project.projectId);
+    setEditTitle(project.title);
+    setEditDescription(project.description);
+    setEditTargetDate(project.targetDate || '');
+    setEditCategory(project.category);
+  };
+
+  const handleSaveEdit = async (projectId: string) => {
+    if (!editTitle.trim() || !editDescription.trim()) return;
+
+    try {
+      const projectRef = doc(db, 'projects_goals', projectId);
+      await updateDoc(projectRef, {
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        targetDate: editTargetDate || '',
+        category: editCategory
+      });
+      setEditingProjectId(null);
+    } catch (error) {
+      console.error('Error al guardar cambios de proyecto:', error);
+    }
+  };
 
   const handleAddTempTask = () => {
     if (!tempTaskText.trim()) return;
@@ -325,132 +357,208 @@ export default function ProjectsModule({ projects, userId }: ProjectsModuleProps
     const completedTasks = project.tasks.filter((t: any) => t.completed).length;
     const totalTasks = project.tasks.length;
     const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const isEditing = editingProjectId === project.projectId;
 
     return (
       <div 
         key={project.projectId} 
         className="glass p-5 rounded-2xl border border-white/10 space-y-4 hover:border-white/20 transition duration-200"
       >
-        <div className="flex justify-between items-start">
-          <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wider ${getCategoryColor(project.category)}`}>
-            {project.category.toUpperCase()}
-          </span>
-          
-          <button 
-            onClick={() => handleDeleteProject(project.projectId)}
-            className="text-gray-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-pointer transition"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="space-y-1">
-          <h5 className="font-bold text-white text-md tracking-tight leading-snug">{project.title}</h5>
-          <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{project.description}</p>
-        </div>
-
-        {project.targetDate && (
-          <div className="flex items-center gap-1 text-[11px] text-gray-400">
-            <Calendar className="w-3.5 h-3.5 text-violet-400" />
-            <span>Plazo: {project.targetDate}</span>
-          </div>
-        )}
-
-        {/* Progress Bar */}
-        {totalTasks > 0 && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-[10px] font-medium text-gray-400">
-              <span>Progreso de Tareas</span>
-              <span>{completedTasks}/{totalTasks} ({progressPercent}%)</span>
+        {isEditing ? (
+          <div className="space-y-3">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Editar Proyecto / Meta</h4>
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Título</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Descripción</label>
+                <textarea
+                  className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                  rows={2}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Categoría</label>
+                  <select
+                    className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value as any)}
+                  >
+                    <option value="profesional">💼 Profesional</option>
+                    <option value="personal">🏡 Personal</option>
+                    <option value="aprendizaje">🎓 Aprendizaje</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold text-gray-500 mb-1 uppercase">Plazo</label>
+                  <input
+                    type="date"
+                    className="w-full bg-slate-950/60 border border-white/10 text-xs p-2 rounded-lg text-white"
+                    value={editTargetDate}
+                    onChange={(e) => setEditTargetDate(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-            <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-white/5">
-              <div 
-                className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={() => setEditingProjectId(null)}
+                className="bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-white px-2.5 py-1.5 rounded-lg text-[10px] transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleSaveEdit(project.projectId)}
+                className="bg-violet-600 hover:bg-violet-500 text-white px-2.5 py-1.5 rounded-lg text-[10px] transition cursor-pointer shadow-md"
+              >
+                Guardar
+              </button>
             </div>
           </div>
-        )}
-
-        {/* Subtask checklist */}
-        <div className="space-y-2 pt-2 border-t border-white/5">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Hitos / Subtareas:</p>
-          
-          {totalTasks > 0 ? (
-            <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
-              {project.tasks.map((task: any) => (
-                <button
-                  key={task.taskId}
-                  onClick={() => handleToggleSubtask(project.projectId, task.taskId)}
-                  className="w-full flex items-start gap-2 text-left text-xs text-gray-300 hover:text-white transition group py-0.5 cursor-pointer"
+        ) : (
+          <>
+            <div className="flex justify-between items-start">
+              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wider ${getCategoryColor(project.category)}`}>
+                {project.category.toUpperCase()}
+              </span>
+              
+              <div className="flex items-center gap-1.5">
+                <button 
+                  onClick={() => startEditing(project)}
+                  className="text-gray-500 hover:text-violet-400 p-1 rounded hover:bg-violet-500/10 cursor-pointer transition"
+                  title="Editar proyecto"
                 >
-                  <span className="text-gray-500 group-hover:text-violet-400 shrink-0 mt-0.5">
-                    {task.completed ? <CheckSquare className="w-4.5 h-4.5 text-emerald-400 fill-emerald-500/10" /> : <Square className="w-4.5 h-4.5" />}
-                  </span>
-                  <span className={`leading-normal ${task.completed ? 'line-through text-gray-500 font-normal' : ''}`}>
-                    {task.title}
-                  </span>
+                  <Edit2 className="w-3.5 h-3.5" />
                 </button>
-              ))}
+                <button 
+                  onClick={() => handleDeleteProject(project.projectId)}
+                  className="text-gray-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 cursor-pointer transition"
+                  title="Eliminar proyecto"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
-          ) : (
-            <p className="text-[10px] text-gray-500 italic">Sin hitos registrados aún.</p>
-          )}
 
-          {/* Quick task adder input */}
-          <div className="flex gap-1.5 pt-1.5">
-            <input
-              type="text"
-              className="flex-1 bg-slate-950/60 border border-white/5 text-[10px] p-2 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50"
-              placeholder="Agregar hito..."
-              value={newTasksInputs[project.projectId] || ''}
-              onChange={(e) => setNewTasksInputs({
-                ...newTasksInputs,
-                [project.projectId]: e.target.value
-              })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  handleAddSubtask(project.projectId);
-                }
-              }}
-            />
-            <button
-              onClick={() => handleAddSubtask(project.projectId)}
-              className="bg-violet-600/20 text-violet-300 hover:bg-violet-600/30 border border-violet-500/20 px-2.5 py-1.5 rounded-lg transition text-[10px] font-semibold cursor-pointer shrink-0"
-            >
-              Agregar
-            </button>
-          </div>
-        </div>
+            <div className="space-y-1">
+              <h5 className="font-bold text-white text-md tracking-tight leading-snug">{project.title}</h5>
+              <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">{project.description}</p>
+            </div>
 
-        {/* Status transitions footer */}
-        <div className="pt-3 border-t border-white/5 flex gap-1 justify-end text-[10px] font-medium">
-          {project.status !== 'en_progreso' && (
-            <button 
-              onClick={() => handleChangeStatus(project.projectId, 'en_progreso')}
-              className="py-1 px-2.5 rounded-lg border border-sky-500/20 text-sky-400 hover:bg-sky-500/10 cursor-pointer transition"
-            >
-              Iniciar
-            </button>
-          )}
-          {project.status !== 'pausado' && (
-            <button 
-              onClick={() => handleChangeStatus(project.projectId, 'pausado')}
-              className="py-1 px-2.5 rounded-lg border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/10 cursor-pointer transition"
-            >
-              Pausar
-            </button>
-          )}
-          {project.status !== 'completado' && (
-            <button 
-              onClick={() => handleChangeStatus(project.projectId, 'completado')}
-              className="py-1 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition flex items-center gap-1 border border-transparent"
-            >
-              Completar <ArrowRight className="w-3 h-3" />
-            </button>
-          )}
-        </div>
+            {project.targetDate && (
+              <div className="flex items-center gap-1 text-[11px] text-gray-400">
+                <Calendar className="w-3.5 h-3.5 text-violet-400" />
+                <span>Plazo: {project.targetDate}</span>
+              </div>
+            )}
+
+            {/* Progress Bar */}
+            {totalTasks > 0 && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] font-medium text-gray-400">
+                  <span>Progreso de Tareas</span>
+                  <span>{completedTasks}/{totalTasks} ({progressPercent}%)</span>
+                </div>
+                <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-white/5">
+                  <div 
+                    className="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Subtask checklist */}
+            <div className="space-y-2 pt-2 border-t border-white/5">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Hitos / Subtareas:</p>
+              
+              {totalTasks > 0 ? (
+                <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                  {project.tasks.map((task: any) => (
+                    <button
+                      key={task.taskId}
+                      onClick={() => handleToggleSubtask(project.projectId, task.taskId)}
+                      className="w-full flex items-start gap-2 text-left text-xs text-gray-300 hover:text-white transition group py-0.5 cursor-pointer"
+                    >
+                      <span className="text-gray-500 group-hover:text-violet-400 shrink-0 mt-0.5">
+                        {task.completed ? <CheckSquare className="w-4.5 h-4.5 text-emerald-400 fill-emerald-500/10" /> : <Square className="w-4.5 h-4.5" />}
+                      </span>
+                      <span className={`leading-normal ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>
+                        {task.title}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-500 italic">Sin hitos registrados aún.</p>
+              )}
+
+              {/* Quick task adder input */}
+              <div className="flex gap-1.5 pt-1.5">
+                <input
+                  type="text"
+                  className="flex-1 bg-slate-950/60 border border-white/5 text-[10px] p-2 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-violet-500/50"
+                  placeholder="Agregar hito..."
+                  value={newTasksInputs[project.projectId] || ''}
+                  onChange={(e) => setNewTasksInputs({
+                    ...newTasksInputs,
+                    [project.projectId]: e.target.value
+                  })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddSubtask(project.projectId);
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => handleAddSubtask(project.projectId)}
+                  className="bg-violet-600/20 text-violet-300 hover:bg-violet-600/30 border border-violet-500/20 px-2.5 py-1.5 rounded-lg transition text-[10px] font-semibold cursor-pointer shrink-0"
+                >
+                  Agregar
+                </button>
+              </div>
+            </div>
+
+            {/* Status transitions footer */}
+            <div className="pt-3 border-t border-white/5 flex gap-1 justify-end text-[10px] font-medium">
+              {project.status !== 'en_progreso' && (
+                <button 
+                  onClick={() => handleChangeStatus(project.projectId, 'en_progreso')}
+                  className="py-1 px-2.5 rounded-lg border border-sky-500/20 text-sky-400 hover:bg-sky-500/10 cursor-pointer transition"
+                >
+                  Iniciar
+                </button>
+              )}
+              {project.status !== 'pausado' && (
+                <button 
+                  onClick={() => handleChangeStatus(project.projectId, 'pausado')}
+                  className="py-1 px-2.5 rounded-lg border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/10 cursor-pointer transition"
+                >
+                  Pausar
+                </button>
+              )}
+              {project.status !== 'completado' && (
+                <button 
+                  onClick={() => handleChangeStatus(project.projectId, 'completado')}
+                  className="py-1 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition flex items-center gap-1 border border-transparent"
+                >
+                  Completar <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
     );
   }
