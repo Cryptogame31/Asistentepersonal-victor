@@ -5,7 +5,7 @@ services:
     env: node
     plan: free
     buildCommand: npm run build
-    startCommand: npm run bot
+    startCommand: node dist/scripts/run-bot.js
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
@@ -26,7 +26,7 @@ services:
     env: node
     plan: free
     buildCommand: npm run build
-    startCommand: npm run notify
+    startCommand: node dist/scripts/run-notifier.js
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
