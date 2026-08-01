@@ -149,10 +149,42 @@ async function saveParsedResult(
       `• *Categoría*: ${parsed.event.category.toUpperCase()}`;
 
   } else if (parsed.category === 'proyecto' && parsed.project) {
+    if (parsed.project.isSubtaskAdd) {
+      const projectsSnap = await adminDb.collection('projects_goals')
+        .where('userId', '==', userId)
+        .get();
+
+      let targetDoc: any = null;
+      let targetData: any = null;
+      const searchTitle = parsed.project.title.toLowerCase();
+
+      projectsSnap.forEach(d => {
+        const pData = d.data();
+        if (pData.title && (pData.title.toLowerCase().includes(searchTitle) || searchTitle.includes(pData.title.toLowerCase()))) {
+          targetDoc = d;
+          targetData = pData;
+        }
+      });
+
+      if (targetDoc && targetData) {
+        const newTasks = (parsed.project.tasks || []).map((t, idx) => ({
+          taskId: `task_${Date.now()}_${idx}`,
+          title: t.title,
+          completed: false
+        }));
+
+        const updatedTasks = [...(targetData.tasks || []), ...newTasks];
+        await targetDoc.ref.update({ tasks: updatedTasks });
+
+        const addedList = newTasks.map(t => `  - [ ] ${t.title}`).join('\n');
+        return `📌 *Nuevas subtareas agregadas al proyecto "${targetData.title}"*:\n\n${addedList}`;
+      }
+    }
+
     const projectRef = adminDb.collection('projects_goals').doc();
     
     // Add subtask IDs
-    const tasksWithIds = parsed.project.tasks.map((task, index) => ({
+    const tasksWithIds = (parsed.project.tasks || []).map((task, index) => ({
       taskId: `task_${Date.now()}_${index}`,
       title: task.title,
       completed: false
@@ -165,7 +197,7 @@ async function saveParsedResult(
       description: parsed.project.description || '',
       targetDate: parsed.project.targetDate || '',
       status: 'en_progreso',
-      category: parsed.project.category,
+      category: parsed.project.category || 'personal',
       tasks: tasksWithIds,
       createdAt: timestamp
     };
@@ -174,8 +206,8 @@ async function saveParsedResult(
     const tareasList = tasksWithIds.map(t => `  - [ ] ${t.title}`).join('\n');
     responseMessage = `🚀 *Proyecto Creado*:\n\n` +
       `• *Título*: ${parsed.project.title}\n` +
-      `• *Descripción*: ${parsed.project.description}\n` +
-      `• *Categoría*: ${parsed.project.category.toUpperCase()}\n` +
+      `• *Descripción*: ${parsed.project.description || 'Sin descripción'}\n` +
+      `• *Categoría*: ${(parsed.project.category || 'personal').toUpperCase()}\n` +
       `• *Subtareas*:\n${tareasList}`;
 
   } else if (parsed.category === 'plan' && parsed.plan) {
@@ -197,6 +229,28 @@ async function saveParsedResult(
       `• *Fecha*: ${parsed.plan.plannedDate}\n` +
       `• *Duración*: ${parsed.plan.durationHours} horas\n` +
       `• *Tipo*: ${parsed.plan.activityType.toUpperCase()}`;
+
+  } else if (parsed.category === 'tarea') {
+    const taskRef = adminDb.collection('daily_tasks').doc();
+    const taskTitle = parsed.dailyTask?.title || parsed.summaryText;
+    const taskCat = parsed.dailyTask?.category || 'general';
+    const taskDate = parsed.dailyTask?.dueDate || new Date().toISOString().split('T')[0];
+
+    const taskData = {
+      taskId: taskRef.id,
+      userId,
+      title: taskTitle,
+      category: taskCat,
+      dueDate: taskDate,
+      completed: false,
+      createdAt: timestamp
+    };
+    batch.set(taskRef, taskData);
+
+    responseMessage = `✅ *Tarea Diaria Guardada (Módulo 5)*:\n\n` +
+      `• *Tarea*: ${taskTitle}\n` +
+      `• *Categoría*: ${taskCat.toUpperCase()}\n` +
+      `• *Fecha*: ${taskDate}`;
 
   } else {
     // Default to Inbox log
@@ -229,7 +283,7 @@ async function saveFallback(userId: string, text: string, inputType: 'text' | 'v
  */
 async function retrieveDataFromFirestore(
   userId: string, 
-  type: 'eventos' | 'proyectos' | 'planes' | 'general', 
+  type: 'eventos' | 'proyectos' | 'planes' | 'tareas' | 'general', 
   period: 'hoy' | 'mañana' | 'semana' | 'todo'
 ): Promise<any[]> {
   const data: any[] = [];
@@ -237,26 +291,27 @@ async function retrieveDataFromFirestore(
   
   // Helper to format dates to YYYY-MM-DD
   const formatDate = (d: Date) => d.toISOString().split('T')[0];
-  
   const todayStr = formatDate(now);
   
-  const tomorrow = new Date();
-  tomorrow.setDate(now.getDate() + 1);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowStr = formatDate(tomorrow);
   
-  const nextWeek = new Date();
-  nextWeek.setDate(now.getDate() + 7);
+  const nextWeek = new Date(now);
+  nextWeek.setDate(nextWeek.getDate() + 7);
   const nextWeekStr = formatDate(nextWeek);
 
   const collectionsToQuery: string[] = [];
   if (type === 'general') {
-    collectionsToQuery.push('events_reminders', 'projects_goals', 'free_time_plans');
+    collectionsToQuery.push('events_reminders', 'projects_goals', 'free_time_plans', 'daily_tasks');
   } else if (type === 'eventos') {
     collectionsToQuery.push('events_reminders');
   } else if (type === 'proyectos') {
     collectionsToQuery.push('projects_goals');
   } else if (type === 'planes') {
     collectionsToQuery.push('free_time_plans');
+  } else if (type === 'tareas') {
+    collectionsToQuery.push('daily_tasks');
   }
 
   for (const collName of collectionsToQuery) {
@@ -278,12 +333,14 @@ async function retrieveDataFromFirestore(
           else if (period === 'semana') match = item.plannedDate >= todayStr && item.plannedDate <= nextWeekStr;
         } else if (collName === 'projects_goals') {
           if (period !== 'todo') match = item.status === 'en_progreso';
+        } else if (collName === 'daily_tasks') {
+          match = !item.completed;
         }
         
         if (match) {
           data.push({ 
             id: doc.id, 
-            collectionName: collName === 'events_reminders' ? 'evento' : collName === 'projects_goals' ? 'proyecto' : 'plan',
+            collectionName: collName === 'events_reminders' ? 'evento' : collName === 'projects_goals' ? 'proyecto' : collName === 'daily_tasks' ? 'tarea' : 'plan',
             ...item 
           });
         }
@@ -347,17 +404,34 @@ bot.command('id', (ctx) => {
   ctx.reply(`Tu Telegram Chat ID es: \`${ctx.chat.id}\``, { parse_mode: 'Markdown' });
 });
 
-bot.command('ayuda', (ctx) => {
-  ctx.reply(
-    `💡 *Guía de captura inteligente*:\n\n` +
-    `Simplemente escríbeme o graba una nota de voz con lo que deseas registrar. Ejemplos:\n\n` +
-    `• *Eventos y Citas*: "Cita médica con el dentista este viernes a las 3:30 pm" o "Cumpleaños de mamá el 5 de agosto".\n` +
-    `• *Compras y Tareas rápidas*: "Necesito comprar 3 cosas para mañana: leche, pan y huevos".\n` +
-    `• *Proyectos*: "Proyecto de aprender NextJS con tareas: ver curso básico, hacer una app y subirla a github".\n` +
-    `• *Tiempo Libre*: "Cena con amigos el sábado a las 9 de la noche" o "Tarde familiar de películas el domingo".\n` +
-    `• *Notas rápidas*: "Idea de negocio: una app para pasear mascotas de forma automatizada".`, 
-    { parse_mode: 'Markdown' }
-  );
+const MANUAL_TEXT = 
+  `📖 *MANUAL DE USO Y REGLAS DEL BOT* 🤖\n\n` +
+  `Puedes enviarme texto o *notas de voz* de forma natural. Aquí están las reglas para que el bot organice todo en tu Dashboard:\n\n` +
+  `1️⃣ *TAREAS DIARIAS (Módulo 5)*:\n` +
+  `• Di la palabra *"tarea"*, *"tarea del día"* o *"pendiente"*.\n` +
+  `• Ejemplos:\n` +
+  `  - "Guardar tarea enviar informe a Juan"\n` +
+  `  - "Tarea del día comprar pan"\n` +
+  `  - "Pendiente llamar al fontanero"\n\n` +
+  `2️⃣ *AÑADIR SUBTAREAS A UN PROYECTO EXISTENTE (Módulo 3)*:\n` +
+  `• Di *"agregar tarea X al proyecto Y"* o *"añadir subtarea X a mi proyecto Y"*.\n` +
+  `• Ejemplos:\n` +
+  `  - "Agregar tarea comprar pintura al proyecto remodelar casa"\n` +
+  `  - "Añadir subtarea subir a GitHub a mi proyecto aprender NextJS"\n\n` +
+  `3️⃣ *CREAR UN PROYECTO NUEVO (Módulo 3)*:\n` +
+  `• Di *"Proyecto X con tareas: A, B y C"*.\n` +
+  `• Ejemplo: "Proyecto remodelar cocina con tareas: comprar azulejos, llamar al albañil y pintar".\n\n` +
+  `4️⃣ *EVENTOS Y CITAS (Módulo 2)*:\n` +
+  `• Menciona la fecha u hora.\n` +
+  `• Ejemplo: "Cita médica el viernes a las 3:30 pm".\n\n` +
+  `5️⃣ *TIEMPO LIBRE (Módulo 4)*:\n` +
+  `• Menciona actividades de ocio o familia.\n` +
+  `• Ejemplo: "Cena con amigos el sábado en la noche".\n\n` +
+  `6️⃣ *CONSULTAS Y REPORTES*:\n` +
+  `• Ejemplos: "qué citas tengo hoy?", "dame mis tareas pendientes", "cuáles son mis proyectos en progreso?".`;
+
+bot.command(['ayuda', 'manual', 'guia'], (ctx) => {
+  ctx.reply(MANUAL_TEXT, { parse_mode: 'Markdown' });
 });
 
 // Text Message Handler

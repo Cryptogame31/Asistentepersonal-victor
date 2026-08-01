@@ -14,12 +14,25 @@ const parsedResultSchema: Schema = {
   properties: {
     category: {
       type: Type.STRING,
-      enum: ['inbox', 'evento', 'proyecto', 'plan', 'consulta'],
+      enum: ['inbox', 'evento', 'proyecto', 'plan', 'tarea', 'consulta'],
       description: 'La categoría principal detectada del mensaje.',
     },
     summaryText: {
       type: Type.STRING,
       description: 'Un resumen de una sola frase o transcripción limpia de lo que el usuario quiere registrar.',
+    },
+    dailyTask: {
+      type: Type.OBJECT,
+      properties: {
+        title: { type: Type.STRING, description: 'Título de la tarea del día o acción rápida' },
+        category: {
+          type: Type.STRING,
+          enum: ['personal', 'trabajo', 'hogar', 'salud', 'general'],
+          description: 'Categoría de la tarea diaria',
+        },
+        dueDate: { type: Type.STRING, description: 'Fecha asignada YYYY-MM-DD' },
+      },
+      required: ['title'],
     },
     event: {
       type: Type.OBJECT,
@@ -58,8 +71,12 @@ const parsedResultSchema: Schema = {
           },
           description: 'Lista de subtareas extraídas',
         },
+        isSubtaskAdd: {
+          type: Type.BOOLEAN,
+          description: 'Establecer en true SI Y SOLO SI el usuario quiere AÑADIR/AGREGAR nuevas subtareas a un proyecto que ya existe (ej: "Agregar tarea comprar pintura al proyecto remodelar cocina").',
+        },
       },
-      required: ['title', 'description', 'category', 'tasks'],
+      required: ['title'],
     },
     plan: {
       type: Type.OBJECT,
@@ -80,7 +97,7 @@ const parsedResultSchema: Schema = {
       properties: {
         queryType: {
           type: Type.STRING,
-          enum: ['eventos', 'proyectos', 'planes', 'general'],
+          enum: ['eventos', 'proyectos', 'planes', 'tareas', 'general'],
           description: 'El tipo de información que el usuario desea consultar o listar.',
         },
         queryPeriod: {
@@ -100,23 +117,29 @@ function getSystemInstruction(currentDateStr: string): string {
   
 La fecha y hora actual de referencia es: ${currentDateStr}. Usa esto para resolver fechas relativas (ej. "mañana", "el próximo lunes", "el jueves a las 3pm", "mi cumpleaños es en 2 días").
 
-Clasifica la entrada en una de estas 5 categorías:
-1. "evento": Para citas médicas, peluquería, reuniones, cumpleaños o tareas con fecha y hora específicas. (Ej. "cita medica hoy 3 pm", "Peluquería mañana 2pm", "reunión el viernes").
-2. "proyecto": Para metas, objetivos de aprendizaje o proyectos a mediano/largo plazo que tengan una lista de subtareas asociadas. (Ej. "proyecto estudiar inglés con tareas ver películas y leer").
-3. "plan": Para actividades de ocio, descanso, tiempo libre o reuniones con familia y amigos (ej. "cena con amigos el viernes", "ir al cine mañana").
-4. "consulta": Cuando el usuario PREGUNTA sobre su información registrada, pide listados, resúmenes, reportes o informes de lo que ya tiene guardado. (Ej. "qué citas tengo hoy?", "dame mis citas de hoy", "dame mis tareas de esta semana", "tengo algún plan para mañana?", "dame un informe de mis citas", "Listado de citas de hoy", "Regálame mis citas de hoy").
-5. "inbox": Para notas rápidas, ideas sueltas o cosas generales que no sean citas con hora ni proyectos estructurados. (Ej. "comprar leche", "idea: escribir una novela", "recordar limpiar la casa").
+Clasifica la entrada en una de estas 6 categorías:
+1. "evento": Para citas médicas, peluquería, reuniones, cumpleaños o compromisos con fecha y hora específicas. (Ej. "cita medica hoy 3 pm", "Peluquería mañana 2pm", "reunión el viernes").
+2. "tarea": Para tareas diarias, pendientes del día, recados, listas de to-do o acciones individuales del Módulo 5 (Tareas Diarias). Usar SIEMPRE que el usuario diga "guardar tarea", "tarea del día", "pendiente", "to-do" o solicite hacer algo individual como comprar algo, enviar un mensaje o realizar un trámite sin crear un gran proyecto con múltiples subtareas. (Ej. "tarea del día comprar leche", "guardar tarea enviar informe a Juan", "pendiente llamar al plomero", "hacer la tarea X para hoy").
+3. "proyecto": ÚNICAMENTE para metas complejas a mediano/largo plazo u objetivos estructurados que requieran explícitamente una lista de múltiples subtareas complejas. (Ej. "proyecto remodelar casa con tareas pintar y comprar muebles").
+4. "plan": Para actividades de ocio, descanso, tiempo libre o reuniones con familia y amigos (ej. "cena con amigos el viernes", "ir al cine mañana").
+5. "consulta": Cuando el usuario PREGUNTA sobre su información registrada, pide listados, resúmenes, reportes o informes de lo que ya tiene guardado. (Ej. "qué citas tengo hoy?", "dame mis tareas de hoy", "cuáles son mis tareas pendientes?", "tengo algún plan para mañana?").
+6. "inbox": Para notas rápidas, ideas sueltas o reflexiones que no sean tareas pendientes, citas con hora ni proyectos.
 
 Reglas críticas:
-- Si el usuario está preguntando o solicitando ver información (ej. "mostrar citas", "informe", "qué tengo que hacer", "dame mis citas", "regálame mis citas", "listado de citas"), clasifícalo estrictamente como "consulta" y llena el objeto "query".
-- Si es una acción a registrar con fecha u hora, clasifícala estrictamente como "evento", "proyecto" o "plan" y llena el objeto respectivo ("event", "project" o "plan"). No lo pongas en "inbox" si contiene fechas, horas o subtareas estructuradas.
-- Retorna estrictamente el objeto JSON que se ajusta al esquema proporcionado.`;
+- Si el usuario dice "tarea", "tarea diaria", "pendiente", "to-do" o pide registrar una acción individual, clasifícalo estrictamente como "tarea" y llena el objeto "dailyTask". NO crees un "proyecto" salvo que tenga múltiples subtareas explícitamente.
+- Si el usuario está preguntando o solicitando ver información (ej. "mostrar citas", "dame mis tareas", "listado de tareas"), clasifícalo estrictamente como "consulta" y llena el objeto "query".
+- Retorna strictly el objeto JSON que se ajusta al esquema proporcionado.`;
 }
 
 export interface ParsedResult {
-  category: 'inbox' | 'evento' | 'proyecto' | 'plan' | 'consulta';
+  category: 'inbox' | 'evento' | 'proyecto' | 'plan' | 'tarea' | 'consulta';
   summaryText: string;
   transcribedText?: string;
+  dailyTask?: {
+    title: string;
+    category?: 'personal' | 'trabajo' | 'hogar' | 'salud' | 'general';
+    dueDate?: string;
+  };
   event?: {
     title: string;
     date: string;
@@ -125,10 +148,11 @@ export interface ParsedResult {
   };
   project?: {
     title: string;
-    description: string;
+    description?: string;
     targetDate?: string;
-    category: 'profesional' | 'personal' | 'aprendizaje';
-    tasks: Array<{ title: string; completed: boolean }>;
+    category?: 'profesional' | 'personal' | 'aprendizaje';
+    tasks?: Array<{ title: string; completed: boolean }>;
+    isSubtaskAdd?: boolean;
   };
   plan?: {
     title: string;
