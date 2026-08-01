@@ -4,7 +4,7 @@ services:
     name: asistente-personal-bot
     env: node
     plan: free
-    buildCommand: npm run build
+    buildCommand: echo "No build step required"
     startCommand: npm run bot
     envVars:
       - key: TELEGRAM_BOT_TOKEN
@@ -25,7 +25,7 @@ services:
     name: asistente-personal-notifier
     env: node
     plan: free
-    buildCommand: npm run build
+    buildCommand: echo "No build step required"
     startCommand: npm run notify
     envVars:
       - key: TELEGRAM_BOT_TOKEN
