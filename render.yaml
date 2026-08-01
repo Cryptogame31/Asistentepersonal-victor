@@ -1,0 +1,40 @@
+services:
+  # 1. Telegram Bot (Free Web Service)
+  - type: web
+    name: asistente-personal-bot
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm run bot
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        sync: false
+
+  # 2. Notifier Daemon (Free Web Service)
+  - type: web
+    name: asistente-personal-notifier
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm run notify
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        sync: false

@@ -138,3 +138,13 @@ runNotifier().then(() => {
 setInterval(async () => {
   await runNotifier();
 }, 60000);
+
+// Lightweight HTTP server for Render free-tier healthchecks
+import http from 'http';
+const PORT = process.env.PORT || 3001; // Default fallback to 3001 to avoid local conflict with the bot
+http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('Notifier daemon is running\n');
+}).listen(PORT, () => {
+  console.log(`Port server listening on ${PORT} for healthchecks`);
+});
