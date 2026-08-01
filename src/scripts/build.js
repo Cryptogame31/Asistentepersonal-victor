@@ -5,11 +5,11 @@ if (process.env.RENDER === 'true') {
   try {
     // Compile run-bot.ts to dist/scripts/run-bot.js
     console.log('Compiling run-bot.ts...');
-    execSync('npx tsc src/scripts/run-bot.ts --outDir dist --module commonjs --target es2022 --moduleResolution node --skipLibCheck --esModuleInterop', { stdio: 'inherit' });
+    execSync('npx tsc src/scripts/run-bot.ts --outDir dist --module commonjs --target es2022 --moduleResolution node --skipLibCheck --esModuleInterop --ignoreConfig', { stdio: 'inherit' });
     
     // Compile run-notifier.ts to dist/scripts/run-notifier.js
     console.log('Compiling run-notifier.ts...');
-    execSync('npx tsc src/scripts/run-notifier.ts --outDir dist --module commonjs --target es2022 --moduleResolution node --skipLibCheck --esModuleInterop', { stdio: 'inherit' });
+    execSync('npx tsc src/scripts/run-notifier.ts --outDir dist --module commonjs --target es2022 --moduleResolution node --skipLibCheck --esModuleInterop --ignoreConfig', { stdio: 'inherit' });
     
     console.log('✅ Backend compilation completed successfully.');
     process.exit(0);
