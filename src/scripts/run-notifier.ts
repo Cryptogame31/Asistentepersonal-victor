@@ -141,6 +141,8 @@ setInterval(async () => {
 
 // Lightweight HTTP server for Render free-tier healthchecks
 import http from 'http';
+import https from 'https';
+
 const PORT = process.env.PORT || 3001; // Default fallback to 3001 to avoid local conflict with the bot
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
@@ -148,3 +150,15 @@ http.createServer((req, res) => {
 }).listen(PORT, () => {
   console.log(`Port server listening on ${PORT} for healthchecks`);
 });
+
+// Self keep-alive ping every 10 minutes to keep Render free tier awake 24/7
+const BOT_URL = process.env.BOT_URL || 'https://asistente-personal-bot.onrender.com';
+const NOTIFIER_URL = process.env.NOTIFIER_URL || 'https://asistente-personal-notifier.onrender.com';
+
+setInterval(() => {
+  try {
+    https.get(BOT_URL, () => {}).on('error', () => {});
+    https.get(NOTIFIER_URL, () => {}).on('error', () => {});
+    console.log('🔄 Keep-alive ping enviado para mantener Render activo 24/7.');
+  } catch (e) {}
+}, 10 * 60 * 1000);
