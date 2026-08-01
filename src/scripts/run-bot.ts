@@ -530,6 +530,15 @@ bot.on('voice', async (ctx) => {
   }
 });
 
+// Register Telegram Native Command Menu (Auto-completes on typing /)
+bot.telegram.setMyCommands([
+  { command: 'start', description: 'Vincular tu cuenta con la Bitácora AI' },
+  { command: 'manual', description: '📖 Ver manual de uso y reglas para voz/texto' },
+  { command: 'ayuda', description: '💡 Guía rápida de captura inteligente' },
+  { command: 'vincular', description: '🔗 Vincular ID de usuario manualmente' },
+  { command: 'id', description: '🆔 Ver tu Telegram Chat ID' },
+]).catch(err => console.error('Error registrando comandos de Telegram:', err));
+
 // Launch Bot
 bot.launch().then(() => {
   console.log('🤖 Bot de Telegram iniciado correctamente y escuchando...');
