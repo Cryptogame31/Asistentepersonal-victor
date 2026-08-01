@@ -11,7 +11,8 @@ import {
 import { 
   LayoutDashboard, Inbox, Calendar, FolderGit2, Compass, LogOut, Copy, Check, 
   MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
-  Eye, EyeOff, Menu, X, ListTodo, Square
+  MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
+  Eye, EyeOff, Menu, X, ListTodo, Square, Download
 } from 'lucide-react';
 
 import KPICards from '../components/KPICards';
@@ -20,11 +21,13 @@ import AgendaModule from '../components/AgendaModule';
 import ProjectsModule from '../components/ProjectsModule';
 import FreeTimeModule from '../components/FreeTimeModule';
 import DailyTasksModule from '../components/DailyTasksModule';
+import InstallAppModal from '../components/InstallAppModal';
 
 function DashboardContent() {
   const { user, userData, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'inbox' | 'agenda' | 'proyectos' | 'tiempo_libre' | 'tareas_diarias'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   
   // Real-time collections states
   const [logs, setLogs] = useState<any[]>([]);
@@ -231,6 +234,18 @@ function DashboardContent() {
                 </button>
               );
             })}
+
+            {/* Install App Button in Sidebar */}
+            <button
+              onClick={() => {
+                setIsInstallModalOpen(true);
+                setIsSidebarOpen(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition cursor-pointer bg-gradient-to-r from-violet-600/20 to-indigo-600/20 border border-violet-500/30 text-violet-300 hover:from-violet-600/30 hover:to-indigo-600/30 mt-4 shadow-lg shadow-violet-500/10"
+            >
+              <Download className="w-5 h-5 text-violet-400 animate-bounce" />
+              <span>Instalar App</span>
+            </button>
           </nav>
         </div>
 
@@ -288,6 +303,15 @@ function DashboardContent() {
           </div>
 
           <div className="flex gap-3">
+            {/* Install App Button */}
+            <button
+              onClick={() => setIsInstallModalOpen(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600/20 to-indigo-600/20 border border-violet-500/30 text-violet-300 hover:from-violet-600/30 hover:to-indigo-600/30 text-xs font-semibold shadow-lg shadow-violet-500/10 cursor-pointer transition"
+            >
+              <Download className="w-4 h-4 text-violet-400" />
+              <span className="hidden sm:inline">Instalar App</span>
+            </button>
+
             {/* Quick action button to Telegram */}
             <a 
               href={`https://t.me/Mibotvic_bot?start=${user?.uid}`}
@@ -432,17 +456,37 @@ function DashboardContent() {
                       <p className="text-gray-300 leading-normal">
                         ¡Listo! Cualquier audio de voz o mensaje de texto será transcrito y enrutado automáticamente a tu cuenta en tiempo real.
                       </p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-white/5 text-center">
+              <div className="pt-2 border-t border-white/5 text-center">
                     <p className="text-[10px] text-gray-500">
                       Bot de Telegram: <strong>t.me/Mibotvic_bot</strong>
                     </p>
                   </div>
                 </div>
-              </div>
 
+                {/* Install App Quick Card */}
+                <div className="glass p-6 rounded-2xl border border-violet-500/20 space-y-3 bg-gradient-to-br from-violet-600/10 via-indigo-600/10 to-transparent">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-md font-semibold text-white flex items-center gap-2">
+                      <Download className="w-5 h-5 text-violet-400" />
+                      Instalar App Móvil & PC
+                    </h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                      PWA
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    Instala esta bitácora en tu Android, iPhone (iOS) o PC con 1 clic sin pasar por tiendas de aplicaciones.
+                  </p>
+                  <button
+                    onClick={() => setIsInstallModalOpen(true)}
+                    className="w-full py-2.5 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs rounded-xl shadow-lg shadow-violet-600/20 flex items-center justify-center gap-2 transition cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    Abrir Asistente de Instalación
+                  </button>
+                </div>
+
+              </div>
             </div>
           </div>
         )}
@@ -454,6 +498,7 @@ function DashboardContent() {
         {activeTab === 'tareas_diarias' && <DailyTasksModule tasks={dailyTasks} userId={user?.uid || ''} />}
       </main>
 
+      <InstallAppModal isOpen={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
     </div>
   );
 }
