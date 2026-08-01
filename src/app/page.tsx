@@ -11,7 +11,6 @@ import {
 import { 
   LayoutDashboard, Inbox, Calendar, FolderGit2, Compass, LogOut, Copy, Check, 
   MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
-  MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
   Eye, EyeOff, Menu, X, ListTodo, Square, Download
 } from 'lucide-react';
 
@@ -456,7 +455,10 @@ function DashboardContent() {
                       <p className="text-gray-300 leading-normal">
                         ¡Listo! Cualquier audio de voz o mensaje de texto será transcrito y enrutado automáticamente a tu cuenta en tiempo real.
                       </p>
-              <div className="pt-2 border-t border-white/5 text-center">
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-white/5 text-center">
                     <p className="text-[10px] text-gray-500">
                       Bot de Telegram: <strong>t.me/Mibotvic_bot</strong>
                     </p>
