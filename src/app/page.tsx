@@ -22,7 +22,7 @@ import FreeTimeModule from '../components/FreeTimeModule';
 import DailyTasksModule from '../components/DailyTasksModule';
 import InstallAppModal from '../components/InstallAppModal';
 
-function DashboardContent() {
+function DashboardContent({ onInstallApp }: { onInstallApp?: () => void }) {
   const { user, userData, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'inbox' | 'agenda' | 'proyectos' | 'tiempo_libre' | 'tareas_diarias'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -506,7 +506,7 @@ function DashboardContent() {
 }
 
 // Authentication Screen (Sign In & Sign Up)
-function AuthScreen() {
+function AuthScreen({ onInstallApp }: { onInstallApp?: () => void }) {
   const { signIn, signUp } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -678,15 +678,26 @@ function AuthScreen() {
           </button>
         </form>
 
-        <div className="text-center pt-2">
+        <div className="text-center pt-2 space-y-3">
           <button
+            type="button"
             onClick={() => {
               setIsSignUp(!isSignUp);
               setErrorMsg('');
             }}
-            className="text-xs text-violet-400 hover:text-violet-300 font-semibold cursor-pointer"
+            className="text-xs text-violet-400 hover:text-violet-300 font-semibold cursor-pointer block w-full text-center"
           >
             {isSignUp ? '¿Ya tienes cuenta? Inicia Sesión' : '¿No tienes cuenta? Regístrate aquí'}
+          </button>
+
+          {/* Install App Direct Button on Login Screen */}
+          <button
+            type="button"
+            onClick={onInstallApp}
+            className="w-full py-3 px-4 bg-gradient-to-r from-violet-600/20 via-indigo-600/20 to-purple-600/20 hover:from-violet-600/30 hover:to-indigo-600/30 border border-violet-500/30 text-violet-300 font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-lg shadow-violet-500/10 mt-2"
+          >
+            <Download className="w-4 h-4 text-violet-400 animate-bounce" />
+            <span>Instalar App en tu Celular / PC</span>
           </button>
         </div>
 
@@ -698,6 +709,29 @@ function AuthScreen() {
 // Shell Component inside AuthProvider
 function AppShell() {
   const { user, loading } = useAuth();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else {
+      setIsInstallModalOpen(true);
+    }
+  };
 
   if (loading) {
     return (
@@ -713,7 +747,16 @@ function AppShell() {
     );
   }
 
-  return user ? <DashboardContent /> : <AuthScreen />;
+  return (
+    <>
+      {user ? (
+        <DashboardContent onInstallApp={handleInstallApp} />
+      ) : (
+        <AuthScreen onInstallApp={handleInstallApp} />
+      )}
+      <InstallAppModal isOpen={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
+    </>
+  );
 }
 
 export default function RootPage() {
