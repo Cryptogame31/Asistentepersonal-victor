@@ -19,7 +19,7 @@ if (getApps().length === 0) {
         credential: cert({
           projectId,
           clientEmail,
-          privateKey: privateKey.replace(/\\n/g, '\n'),
+          privateKey: privateKey.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n'),
         }),
         storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
       });
