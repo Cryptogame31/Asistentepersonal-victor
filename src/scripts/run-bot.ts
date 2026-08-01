@@ -12,7 +12,11 @@ if (!token) {
   process.exit(1);
 }
 
-const bot = new Telegraf(token);
+const bot = new Telegraf(token, {
+  telegram: {
+    fetch: globalThis.fetch,
+  },
+});
 
 // Cache users to avoid querying Firestore on every single message (refreshed dynamically)
 const userCache = new Map<number, { id: string; name: string }>();
