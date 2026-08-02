@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Download, Smartphone, Monitor, Share, PlusSquare, CheckCircle, X, Sparkles, ArrowRight } from 'lucide-react';
+import BrandBadge from './BrandBadge';
 
 interface InstallAppModalProps {
   isOpen: boolean;
@@ -217,11 +218,11 @@ export default function InstallAppModal({ isOpen, onClose }: InstallAppModalProp
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-gray-950 border-t border-gray-800/80 flex items-center justify-between text-xs text-gray-400">
-          <span>PWA Versión 1.0 (Sin tiendas de Apps)</span>
+        <div className="p-4 bg-gray-950 border-t border-gray-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-400">
+          <BrandBadge variant="compact" />
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium"
+            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium cursor-pointer"
           >
             Cerrar
           </button>

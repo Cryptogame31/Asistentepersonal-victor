@@ -206,7 +206,7 @@ export async function parseTextMessage(text: string): Promise<ParsedResult> {
     responseSchema: parsedResultSchema,
   });
 
-  const result = JSON.parse(response.text) as ParsedResult;
+  const result = JSON.parse(response.text || '{}') as ParsedResult;
   result.transcribedText = text;
   return result;
 }
@@ -241,7 +241,7 @@ export async function parseVoiceMessage(audioBuffer: Buffer, mimeType: string = 
     responseSchema: parsedResultSchema,
   });
 
-  const result = JSON.parse(response.text) as ParsedResult;
+  const result = JSON.parse(response.text || '{}') as ParsedResult;
   result.transcribedText = result.summaryText;
   return result;
 }

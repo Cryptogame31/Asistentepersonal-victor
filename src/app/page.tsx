@@ -11,7 +11,7 @@ import {
 import { 
   LayoutDashboard, Inbox, Calendar, FolderGit2, Compass, LogOut, Copy, Check, 
   MessageSquare, User as UserIcon, Send, Sparkles, Shield, Clock, HelpCircle,
-  Eye, EyeOff, Menu, X, ListTodo, Square, Download
+  Eye, EyeOff, Menu, X, ListTodo, Square, Download, ShieldCheck
 } from 'lucide-react';
 
 import KPICards from '../components/KPICards';
@@ -21,10 +21,12 @@ import ProjectsModule from '../components/ProjectsModule';
 import FreeTimeModule from '../components/FreeTimeModule';
 import DailyTasksModule from '../components/DailyTasksModule';
 import InstallAppModal from '../components/InstallAppModal';
+import SuperAdminModule from '../components/SuperAdminModule';
+import BrandBadge from '../components/BrandBadge';
 
 function DashboardContent({ onInstallApp }: { onInstallApp?: () => void }) {
   const { user, userData, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'inbox' | 'agenda' | 'proyectos' | 'tiempo_libre' | 'tareas_diarias'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'inbox' | 'agenda' | 'proyectos' | 'tiempo_libre' | 'tareas_diarias' | 'super_admin'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   
@@ -212,6 +214,7 @@ function DashboardContent({ onInstallApp }: { onInstallApp?: () => void }) {
               { id: 'proyectos', label: '3. Proyectos & Metas', icon: FolderGit2 },
               { id: 'tiempo_libre', label: '4. Tiempo Libre', icon: Compass },
               { id: 'tareas_diarias', label: '5. Tareas Diarias', icon: ListTodo },
+              { id: 'super_admin', label: '🛡️ Super Admin', icon: ShieldCheck },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -246,6 +249,10 @@ function DashboardContent({ onInstallApp }: { onInstallApp?: () => void }) {
               <span>Instalar App</span>
             </button>
           </nav>
+
+          <div className="pt-4 flex justify-center">
+            <BrandBadge variant="compact" />
+          </div>
         </div>
 
         {/* User profile & Link options */}
@@ -498,6 +505,12 @@ function DashboardContent({ onInstallApp }: { onInstallApp?: () => void }) {
         {activeTab === 'proyectos' && <ProjectsModule projects={projects} userId={user?.uid || ''} />}
         {activeTab === 'tiempo_libre' && <FreeTimeModule plans={plans} userId={user?.uid || ''} />}
         {activeTab === 'tareas_diarias' && <DailyTasksModule tasks={dailyTasks} userId={user?.uid || ''} />}
+        {activeTab === 'super_admin' && <SuperAdminModule />}
+
+        {/* Footer Brand Banner */}
+        <div className="pt-8 pb-4 flex justify-center">
+          <BrandBadge variant="full" className="w-full max-w-xl" />
+        </div>
       </main>
 
       <InstallAppModal isOpen={isInstallModalOpen} onClose={() => setIsInstallModalOpen(false)} />
@@ -699,6 +712,9 @@ function AuthScreen({ onInstallApp }: { onInstallApp?: () => void }) {
             <Download className="w-4 h-4 text-violet-400 animate-bounce" />
             <span>Instalar App en tu Celular / PC</span>
           </button>
+
+          {/* Dopamine Brand Badge */}
+          <BrandBadge variant="floating" />
         </div>
 
       </div>
