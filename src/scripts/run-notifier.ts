@@ -133,16 +133,32 @@ import { generateMotivationalMorningBriefing } from '../services/gemini';
 
 let lastBriefingDateStr = '';
 
-async function checkAndSendDailyBriefing() {
+function getLocalDateTimeAndHour() {
   const now = new Date();
+  const dateOptions: Intl.DateTimeFormatOptions = { 
+    timeZone: 'America/Bogota', 
+    year: 'numeric', 
+    month: '2-digit', 
+    day: '2-digit' 
+  };
+  const hourOptions: Intl.DateTimeFormatOptions = { 
+    timeZone: 'America/Bogota', 
+    hour: 'numeric', 
+    hour12: false 
+  };
+
+  const todayStr = new Intl.DateTimeFormat('en-CA', dateOptions).format(now);
+  const currentHour = parseInt(new Intl.DateTimeFormat('en-US', hourOptions).format(now), 10);
   
-  // Format current date YYYY-MM-DD
-  const todayStr = now.toISOString().split('T')[0];
-  const currentHour = now.getHours();
+  return { todayStr, currentHour };
+}
+
+async function checkAndSendDailyBriefing() {
+  const { todayStr, currentHour } = getLocalDateTimeAndHour();
   
-  // Trigger at 7:00 AM if it hasn't run yet today
+  // Trigger at 7:00 AM local time (hour === 7) if it hasn't run yet today
   if (currentHour === 7 && lastBriefingDateStr !== todayStr) {
-    console.log(`🌅 Iniciando envío de Resumen Motivacional Matutino (7:00 AM) para ${todayStr}...`);
+    console.log(`🌅 Iniciando envío de Resumen Motivacional Matutino (7:00 AM Hora Local) para ${todayStr}...`);
     lastBriefingDateStr = todayStr;
 
     try {
