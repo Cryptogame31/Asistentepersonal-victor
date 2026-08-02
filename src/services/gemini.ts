@@ -166,6 +166,26 @@ export interface ParsedResult {
   };
 }
 
+const PREFERRED_MODELS = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.0-flash'];
+
+async function generateContentWithFallback(contents: any, config?: any) {
+  let lastError: any = null;
+  for (const modelName of PREFERRED_MODELS) {
+    try {
+      const params: any = { model: modelName, contents };
+      if (config) params.config = config;
+      const response = await ai.models.generateContent(params);
+      if (response && response.text) {
+        return response;
+      }
+    } catch (err: any) {
+      console.warn(`⚠️ Intento fallido con modelo ${modelName}:`, err.message || err);
+      lastError = err;
+    }
+  }
+  throw lastError || new Error('No se pudo conectar con los servidores de Gemini API.');
+}
+
 /**
  * Parses a plain text input using Gemini.
  */
