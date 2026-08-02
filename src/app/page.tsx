@@ -207,35 +207,40 @@ function DashboardContent({ onInstallApp }: { onInstallApp?: () => void }) {
 
           {/* Navigation Menu */}
           <nav className="space-y-1">
-            {[
-              { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
-              { id: 'inbox', label: '1. Inbox / Bitácora', icon: Inbox },
-              { id: 'agenda', label: '2. Agenda / Eventos', icon: Calendar },
-              { id: 'proyectos', label: '3. Proyectos & Metas', icon: FolderGit2 },
-              { id: 'tiempo_libre', label: '4. Tiempo Libre', icon: Compass },
-              { id: 'tareas_diarias', label: '5. Tareas Diarias', icon: ListTodo },
-              { id: 'super_admin', label: '🛡️ Super Admin', icon: ShieldCheck },
-            ].map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id as any);
-                    setIsSidebarOpen(false);
-                  }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition cursor-pointer ${
-                    isActive 
-                      ? 'bg-violet-600/15 border border-violet-500/30 text-violet-300 shadow-md shadow-violet-500/5' 
-                      : 'border border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-200'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  {tab.label}
-                </button>
-              );
-            })}
+            {(() => {
+              const isSuperAdmin = userData?.role === 'superadmin' || user?.email?.toLowerCase().includes('expandete') || user?.email === 'admin@expandete.cloud' || userData?.role === undefined;
+              const navItems = [
+                { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
+                { id: 'inbox', label: '1. Inbox / Bitácora', icon: Inbox },
+                { id: 'agenda', label: '2. Agenda / Eventos', icon: Calendar },
+                { id: 'proyectos', label: '3. Proyectos & Metas', icon: FolderGit2 },
+                { id: 'tiempo_libre', label: '4. Tiempo Libre', icon: Compass },
+                { id: 'tareas_diarias', label: '5. Tareas Diarias', icon: ListTodo },
+                ...(isSuperAdmin ? [{ id: 'super_admin', label: '🛡️ Super Admin', icon: ShieldCheck }] : []),
+              ];
+
+              return navItems.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id as any);
+                      setIsSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition cursor-pointer ${
+                      isActive 
+                        ? 'bg-violet-600/15 border border-violet-500/30 text-violet-300 shadow-md shadow-violet-500/5' 
+                        : 'border border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    {tab.label}
+                  </button>
+                );
+              });
+            })()}
 
             {/* Install App Button in Sidebar */}
             <button

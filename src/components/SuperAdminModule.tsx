@@ -3,11 +3,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, Users, Zap, Mail, Search, CheckCircle2, 
-  XCircle, Send, Key, Sparkles, RefreshCw, AlertCircle, Award
+  Send, Key, RefreshCw, AlertCircle, Award
 } from 'lucide-react';
-import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { sendPasswordResetEmail } from 'firebase/auth';
-import { db, auth } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import BrandBadge from './BrandBadge';
 
 interface UserData {
@@ -30,15 +29,16 @@ export default function SuperAdminModule() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, 'users'));
-      const list: UserData[] = [];
-      snap.forEach(d => {
-        list.push({ uid: d.id, ...d.data() } as UserData);
-      });
-      setUsers(list);
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      if (data.users) {
+        setUsers(data.users);
+      } else {
+        showNotification(data.error || 'Error al cargar la lista de usuarios desde la API.', 'error');
+      }
     } catch (err: any) {
       console.error('Error cargando usuarios:', err);
-      showNotification('Error al cargar la lista de usuarios.', 'error');
+      showNotification('Error de conexión al cargar la lista de usuarios.', 'error');
     } finally {
       setLoading(false);
     }
@@ -58,18 +58,23 @@ export default function SuperAdminModule() {
     const newStatus = isPro ? 'free' : 'active';
 
     try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        subscriptionStatus: newStatus,
-        subscriptionUpdatedAt: new Date().toISOString()
+      const res = await fetch('/api/admin/update-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid, subscriptionStatus: newStatus })
       });
+      const data = await res.json();
 
-      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, subscriptionStatus: newStatus } : u));
-      showNotification(
-        newStatus === 'active' 
-          ? `⚡ Suscripción Pro Activada para ${user.email || user.name}`
-          : `Plan Gratuito establecido para ${user.email || user.name}`
-      );
+      if (data.success) {
+        setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, subscriptionStatus: newStatus } : u));
+        showNotification(
+          newStatus === 'active' 
+            ? `⚡ Suscripción Pro Activada para ${user.email || user.name || user.uid}`
+            : `Plan Gratuito establecido para ${user.email || user.name || user.uid}`
+        );
+      } else {
+        showNotification(data.error || 'Error al actualizar la suscripción.', 'error');
+      }
     } catch (err: any) {
       console.error(err);
       showNotification('Error al actualizar la suscripción del usuario.', 'error');
@@ -81,15 +86,23 @@ export default function SuperAdminModule() {
     const newRole = isAdmin ? 'user' : 'superadmin';
 
     try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, { role: newRole });
+      const res = await fetch('/api/admin/update-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid: user.uid, role: newRole })
+      });
+      const data = await res.json();
 
-      setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, role: newRole } : u));
-      showNotification(
-        newRole === 'superadmin' 
-          ? `👑 Rol Super Admin asignado a ${user.email || user.name}`
-          : `Rol estándar asignado a ${user.email || user.name}`
-      );
+      if (data.success) {
+        setUsers(prev => prev.map(u => u.uid === user.uid ? { ...u, role: newRole } : u));
+        showNotification(
+          newRole === 'superadmin' 
+            ? `👑 Rol Super Admin asignado a ${user.email || user.name || user.uid}`
+            : `Rol estándar asignado a ${user.email || user.name || user.uid}`
+        );
+      } else {
+        showNotification(data.error || 'Error al actualizar el rol.', 'error');
+      }
     } catch (err: any) {
       console.error(err);
       showNotification('Error al actualizar el rol.', 'error');
@@ -181,7 +194,7 @@ export default function SuperAdminModule() {
             </div>
           </div>
           <div className="text-2xl font-bold text-white">{totalUsers}</div>
-          <p className="text-[11px] text-gray-500">Cuentas registradas en la base de datos</p>
+          <p className="text-[11px] text-gray-500">Cuentas registradas en la plataforma</p>
         </div>
 
         <div className="glass p-5 rounded-2xl border border-fuchsia-500/20 space-y-2 bg-gradient-to-br from-fuchsia-500/10 via-purple-500/5 to-transparent shadow-lg shadow-fuchsia-500/5">
@@ -213,9 +226,9 @@ export default function SuperAdminModule() {
           <div>
             <h3 className="text-md font-bold text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-fuchsia-400" />
-              Gestión de Usuarios
+              Gestión de Usuarios Registrados
             </h3>
-            <p className="text-xs text-gray-400">Administra accesos, activa pagos/suscripciones y recupera contraseñas.</p>
+            <p className="text-xs text-gray-400">Administra accesos, activa suscripciones y restablece contraseñas.</p>
           </div>
 
           <div className="relative w-full sm:w-72">
@@ -248,7 +261,7 @@ export default function SuperAdminModule() {
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-400">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto text-fuchsia-400 mb-2" />
-                    Cargando lista de usuarios...
+                    Cargando lista de usuarios desde el servidor...
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
@@ -271,7 +284,7 @@ export default function SuperAdminModule() {
                           <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-violet-600 to-fuchsia-600 flex items-center justify-center font-bold text-white text-[11px] shrink-0">
                             {(u.name || u.displayName || u.email || 'U').charAt(0).toUpperCase()}
                           </div>
-                          <span>{u.name || u.displayName || 'Sin Nombre'}</span>
+                          <span>{u.name || u.displayName || 'Usuario'}</span>
                         </div>
                       </td>
 
@@ -283,7 +296,7 @@ export default function SuperAdminModule() {
                             <span>{u.email}</span>
                           </div>
                         ) : (
-                          <span className="text-gray-500 italic">No disponible</span>
+                          <span className="text-gray-500 italic font-mono text-[10px]">{u.uid.slice(0, 12)}...</span>
                         )}
                       </td>
 
