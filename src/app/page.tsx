@@ -208,7 +208,7 @@ function DashboardContent({ onInstallApp }: { onInstallApp?: () => void }) {
           {/* Navigation Menu */}
           <nav className="space-y-1">
             {(() => {
-              const isSuperAdmin = userData?.role === 'superadmin' || user?.email?.toLowerCase().includes('expandete') || user?.email === 'admin@expandete.cloud' || userData?.role === undefined;
+              const isSuperAdmin = userData?.role === 'superadmin' || user?.email === 'victorrc3181@gmail.com' || user?.email?.toLowerCase().includes('expandete') || user?.email === 'admin@expandete.cloud';
               const navItems = [
                 { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard },
                 { id: 'inbox', label: '1. Inbox / Bitácora', icon: Inbox },
