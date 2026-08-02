@@ -180,31 +180,11 @@ export async function parseTextMessage(text: string): Promise<ParsedResult> {
     minute: '2-digit'
   });
 
-  let response: any = null;
-  let attempts = 0;
-  while (attempts < 3) {
-    try {
-      response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: text,
-        config: {
-          systemInstruction: getSystemInstruction(currentDateStr),
-          responseMimeType: 'application/json',
-          responseSchema: parsedResultSchema,
-        }
-      });
-      if (response && response.text) break;
-    } catch (err) {
-      attempts++;
-      console.warn(`⚠️ Intento ${attempts} fallido al llamar a Gemini API (texto). Reintentando en 1.5s...`, err);
-      if (attempts >= 3) throw err;
-      await new Promise(r => setTimeout(r, 1500));
-    }
-  }
-
-  if (!response?.text) {
-    throw new Error('No se recibió respuesta válida de Gemini.');
-  }
+  const response = await generateContentWithFallback(text, {
+    systemInstruction: getSystemInstruction(currentDateStr),
+    responseMimeType: 'application/json',
+    responseSchema: parsedResultSchema,
+  });
 
   const result = JSON.parse(response.text) as ParsedResult;
   result.transcribedText = text;
@@ -225,45 +205,21 @@ export async function parseVoiceMessage(audioBuffer: Buffer, mimeType: string = 
     minute: '2-digit'
   });
 
-  let response: any = null;
-  let attempts = 0;
-  while (attempts < 3) {
-    try {
-      response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [
-          {
-            inlineData: {
-              mimeType,
-              data: audioBuffer.toString('base64'),
-            }
-          },
-          {
-            text: 'Escucha este audio atentamente. Transcríbelo en español y luego clasifica y estructura la información extraída según las instrucciones del sistema.'
-          }
-        ],
-        config: {
-          systemInstruction: getSystemInstruction(currentDateStr),
-          responseMimeType: 'application/json',
-          responseSchema: parsedResultSchema,
-        }
-      });
-      if (response && response.text) break;
-    } catch (err) {
-      attempts++;
-      console.warn(`⚠️ Intento ${attempts} fallido al llamar a Gemini API (voz). Reintentando en 1.5s...`, err);
-      if (attempts >= 3) throw err;
-      await new Promise(r => setTimeout(r, 1500));
+  const response = await generateContentWithFallback([
+    {
+      inlineData: {
+        mimeType,
+        data: audioBuffer.toString('base64'),
+      }
+    },
+    {
+      text: 'Escucha este audio atentamente. Transcríbelo en español y luego clasifica y estructura la información extraída según las instrucciones del sistema.'
     }
-  }
-
-  if (!response?.text) {
-    throw new Error('No se recibió respuesta de Gemini al procesar el audio.');
-  }
-
-  console.log('--- RESPUESA RAW DE GEMINI (VOZ) ---');
-  console.log(response.text);
-  console.log('------------------------------------');
+  ], {
+    systemInstruction: getSystemInstruction(currentDateStr),
+    responseMimeType: 'application/json',
+    responseSchema: parsedResultSchema,
+  });
 
   const result = JSON.parse(response.text) as ParsedResult;
   result.transcribedText = result.summaryText;
@@ -309,10 +265,7 @@ export async function generateMotivationalMorningBriefing(
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
+    const response = await generateContentWithFallback(prompt);
     return response.text || `☀️ *¡Buenos días ${userName}!*\n\nQue tengas un excelente día lleno de éxitos y energía.`;
   } catch (error) {
     console.error('Error generando resumen motivacional:', error);
@@ -324,19 +277,19 @@ export async function generateMotivationalMorningBriefing(
  * Generates a conversational response based on the database content.
  */
 export async function generateConversationalResponse(userQuery: string, data: any[]): Promise<string> {
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.6-flash',
-    contents: [
-      {
-        text: `El usuario ha preguntado en su asistente de bitácora personal: "${userQuery}".
-        
-Los datos recuperados en tiempo real de su base de datos de Firestore son los siguientes:
-${JSON.stringify(data, null, 2)}
+  const prompt = `
+  El usuario hizo la siguiente consulta: "${userQuery}".
+  Los datos recuperados en tiempo real de su base de datos en Firestore son los siguientes:
+  ${JSON.stringify(data, null, 2)}
 
-Por favor, redacta una respuesta amigable, corta y bien estructurada en español que responda directamente a su consulta utilizando estos datos. Usa emojis apropiados (ej: 🏥 para citas, 🎂 cumpleaños, 🚀 proyectos, 🏡 tiempo libre, 📅 recordatorios). Usa formato Markdown simple compatible con Telegram: utiliza asterisco simple (*texto*) para negrita, guión bajo simple (_texto_) para cursiva y comillas invertidas (\`texto\`) para código. NUNCA uses doble asterisco (**texto**) para negritas ni escapes innecesarios. Si no hay datos, infórmale cortésmente que no tiene registros para ese período.`
-      }
-    ]
-  });
+  Por favor, redacta una respuesta amigable, corta y bien estructurada en español que responda directamente a su consulta utilizando estos datos. Usa emojis apropiados (ej: 🏥 para citas, 🎂 cumpleaños, 🚀 proyectos, 🏡 tiempo libre, 📅 recordatorios). Usa formato Markdown simple compatible con Telegram (*texto* para negrita).
+  `;
 
-  return response.text || 'No pude procesar la respuesta en este momento.';
+  try {
+    const response = await generateContentWithFallback(prompt);
+    return response.text || 'No pude procesar la respuesta en este momento.';
+  } catch (error) {
+    console.error('Error al generar respuesta conversacional:', error);
+    return 'Lo siento, no pude obtener los detalles de tu consulta en este momento.';
+  }
 }
