@@ -129,14 +129,91 @@ async function runNotifier() {
   }
 }
 
+import { generateMotivationalMorningBriefing } from '../services/gemini';
+
+let lastBriefingDateStr = '';
+
+async function checkAndSendDailyBriefing() {
+  const now = new Date();
+  
+  // Format current date YYYY-MM-DD
+  const todayStr = now.toISOString().split('T')[0];
+  const currentHour = now.getHours();
+  
+  // Trigger at 7:00 AM if it hasn't run yet today
+  if (currentHour === 7 && lastBriefingDateStr !== todayStr) {
+    console.log(`🌅 Iniciando envío de Resumen Motivacional Matutino (7:00 AM) para ${todayStr}...`);
+    lastBriefingDateStr = todayStr;
+
+    try {
+      const usersSnap = await adminDb.collection('users').get();
+      if (usersSnap.empty) return;
+
+      for (const userDoc of usersSnap.docs) {
+        const userData = userDoc.data();
+        const userId = userDoc.id;
+        const telegramChatId = userData?.telegramChatId;
+        const userName = userData?.displayName || userData?.name || 'Usuario';
+
+        if (!telegramChatId) continue;
+
+        try {
+          // 1. Events for today
+          const eventsSnap = await adminDb.collection('events_reminders')
+            .where('userId', '==', userId)
+            .get();
+          
+          const eventsToday = eventsSnap.docs
+            .map(d => d.data())
+            .filter((e: any) => e.date === todayStr);
+
+          // 2. Active projects and their progress
+          const projectsSnap = await adminDb.collection('projects_goals')
+            .where('userId', '==', userId)
+            .get();
+          
+          const projects = projectsSnap.docs
+            .map(d => d.data())
+            .filter((p: any) => p.status === 'en_progreso');
+
+          // 3. Pending daily tasks
+          const tasksSnap = await adminDb.collection('daily_tasks')
+            .where('userId', '==', userId)
+            .get();
+
+          const dailyTasks = tasksSnap.docs
+            .map(d => d.data())
+            .filter((t: any) => !t.completed);
+
+          // Generate Gemini Motivational Briefing
+          const briefingMsg = await generateMotivationalMorningBriefing(
+            userName,
+            eventsToday,
+            projects,
+            dailyTasks
+          );
+
+          await bot.telegram.sendMessage(telegramChatId, briefingMsg, { parse_mode: 'Markdown' });
+          console.log(`✅ Resumen Motivacional de las 7:00 AM enviado a ${userName} (${telegramChatId})`);
+        } catch (userErr) {
+          console.error(`❌ Error enviando resumen a ${userName}:`, userErr);
+        }
+      }
+    } catch (err) {
+      console.error('Error durante la generación de resúmenes matutinos:', err);
+    }
+  }
+}
+
 // Run immediately on start
 runNotifier().then(() => {
-  console.log('⏰ Daemon de notificaciones iniciado. Próximo escaneo en 1 minuto...');
+  console.log('⏰ Daemon de notificaciones y resumen matutino iniciado. Próximo escaneo en 1 minuto...');
 });
 
 // Poll the database every 1 minute
 setInterval(async () => {
   await runNotifier();
+  await checkAndSendDailyBriefing();
 }, 60000);
 
 // Lightweight HTTP server for Render free-tier healthchecks

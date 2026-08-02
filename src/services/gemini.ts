@@ -253,6 +253,56 @@ export async function parseVoiceMessage(audioBuffer: Buffer, mimeType: string = 
 }
 
 /**
+ * Generates a personalized 7:00 AM motivational morning briefing for a user.
+ */
+export async function generateMotivationalMorningBriefing(
+  userName: string,
+  eventsToday: any[],
+  projects: any[],
+  dailyTasks: any[]
+): Promise<string> {
+  const prompt = `
+  Eres el Asistente Personal Inteligente de ${userName}.
+  Genera un mensaje motivacional de inicio de día (7:00 AM) cálido, enérgico, inspirador y profesional en español.
+
+  DATOS DEL DÍA DE HOY:
+  - Citas/Eventos de hoy (${eventsToday.length}):
+  ${eventsToday.length > 0 ? eventsToday.map(e => `  • ${e.title} (${e.time || 'Todo el día'}) - ${e.category || 'Compromiso'}`).join('\n') : '  • No tienes citas programadas para hoy.'}
+
+  - Avance de Proyectos (${projects.length}):
+  ${projects.length > 0 ? projects.map(p => {
+    const total = p.tasks?.length || 0;
+    const done = p.tasks?.filter((t: any) => t.completed)?.length || 0;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    return `  • ${p.title}: ${pct}% completado (${done}/${total} subtareas)`;
+  }).join('\n') : '  • No tienes proyectos activos actualmente.'}
+
+  - Tareas Diarias Pendientes (${dailyTasks.length}):
+  ${dailyTasks.length > 0 ? dailyTasks.map(t => `  • ${t.title} [Categoría: ${t.category || 'general'}]`).join('\n') : '  • ¡Excelente! No tienes tareas diarias pendientes.'}
+
+  FORMATO DEL MENSAJE:
+  1. Saludo matutino inspirador con emoji y una frase motivacional corta y poderosa.
+  2. 📅 *Citas y Compromisos de Hoy*: Listado claro con hora.
+  3. 🚀 *Progreso de Proyectos*: Lista de proyectos con porcentaje de avance.
+  4. 📋 *Tareas del Día*: Lista de pendientes clave para hoy.
+  5. Cierre positivo deseando un gran día.
+
+  Usa formato de Markdown claro para Telegram (*negrita*, emojis, listas).
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+    return response.text || `☀️ *¡Buenos días ${userName}!*\n\nQue tengas un excelente día lleno de éxitos y energía.`;
+  } catch (error) {
+    console.error('Error generando resumen motivacional:', error);
+    return `☀️ *¡Buenos días ${userName}!*\n\nQue tengas un día increíble y muy productivo.`;
+  }
+}
+
+/**
  * Generates a conversational response based on the database content.
  */
 export async function generateConversationalResponse(userQuery: string, data: any[]): Promise<string> {
