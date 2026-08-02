@@ -180,25 +180,31 @@ export async function parseTextMessage(text: string): Promise<ParsedResult> {
     minute: '2-digit'
   });
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.6-flash',
-    contents: [
-      { text: `Entrada del usuario: "${text}"` }
-    ],
-    config: {
-      systemInstruction: getSystemInstruction(currentDateStr),
-      responseMimeType: 'application/json',
-      responseSchema: parsedResultSchema,
+  let response: any = null;
+  let attempts = 0;
+  while (attempts < 3) {
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: text,
+        config: {
+          systemInstruction: getSystemInstruction(currentDateStr),
+          responseMimeType: 'application/json',
+          responseSchema: parsedResultSchema,
+        }
+      });
+      if (response && response.text) break;
+    } catch (err) {
+      attempts++;
+      console.warn(`⚠️ Intento ${attempts} fallido al llamar a Gemini API (texto). Reintentando en 1.5s...`, err);
+      if (attempts >= 3) throw err;
+      await new Promise(r => setTimeout(r, 1500));
     }
-  });
-
-  if (!response.text) {
-    throw new Error('No se recibió respuesta de Gemini.');
   }
 
-  console.log('--- RESPUESA RAW DE GEMINI (TEXTO) ---');
-  console.log(response.text);
-  console.log('--------------------------------------');
+  if (!response?.text) {
+    throw new Error('No se recibió respuesta válida de Gemini.');
+  }
 
   const result = JSON.parse(response.text) as ParsedResult;
   result.transcribedText = text;
@@ -219,27 +225,39 @@ export async function parseVoiceMessage(audioBuffer: Buffer, mimeType: string = 
     minute: '2-digit'
   });
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.6-flash',
-    contents: [
-      {
-        inlineData: {
-          mimeType,
-          data: audioBuffer.toString('base64'),
+  let response: any = null;
+  let attempts = 0;
+  while (attempts < 3) {
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          {
+            inlineData: {
+              mimeType,
+              data: audioBuffer.toString('base64'),
+            }
+          },
+          {
+            text: 'Escucha este audio atentamente. Transcríbelo en español y luego clasifica y estructura la información extraída según las instrucciones del sistema.'
+          }
+        ],
+        config: {
+          systemInstruction: getSystemInstruction(currentDateStr),
+          responseMimeType: 'application/json',
+          responseSchema: parsedResultSchema,
         }
-      },
-      {
-        text: 'Escucha este audio atentamente. Transcríbelo palabra por palabra en español y luego clasifica y estructura la información extraída según las instrucciones del sistema.'
-      }
-    ],
-    config: {
-      systemInstruction: getSystemInstruction(currentDateStr),
-      responseMimeType: 'application/json',
-      responseSchema: parsedResultSchema,
+      });
+      if (response && response.text) break;
+    } catch (err) {
+      attempts++;
+      console.warn(`⚠️ Intento ${attempts} fallido al llamar a Gemini API (voz). Reintentando en 1.5s...`, err);
+      if (attempts >= 3) throw err;
+      await new Promise(r => setTimeout(r, 1500));
     }
-  });
+  }
 
-  if (!response.text) {
+  if (!response?.text) {
     throw new Error('No se recibió respuesta de Gemini al procesar el audio.');
   }
 
